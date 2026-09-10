@@ -1,0 +1,8 @@
+<!-- /storage/internal_new/project/MyHomeCam/app/src/main/res/values/strings.xml -->
+<!--ver 1.01-04-->
+
+<resources>
+    <string name="app_name">MyHomeCam</string>
+    <string name="camera_tab">カメラ</string>
+    <string name="settings_tab">設定</string>
+</resources>

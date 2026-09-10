@@ -1,0 +1,18 @@
+<!-- /storage/internal_new/project/MyHomeCam/app/src/main/res/layout/activity_main.xml -->
+<!--ver 1.01-07-->
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="MyHomeCam"
+        android:textSize="22sp" />
+
+</LinearLayout>

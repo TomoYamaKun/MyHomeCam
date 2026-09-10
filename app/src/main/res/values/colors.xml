@@ -1,0 +1,11 @@
+<!-- /storage/internal_new/project/MyHomeCam/app/src/main/res/values/colors.xml -->
+<!--ver 1.01-09-->
+
+<resources>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+
+    <color name="colorPrimary">#000000</color>
+    <color name="colorPrimaryDark">#000000</color>
+    <color name="colorAccent">#FFFFFF</color>
+</resources>
