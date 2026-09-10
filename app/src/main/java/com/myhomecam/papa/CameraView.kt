@@ -1,86 +1,145 @@
 //app/src/main/java/com/myhomecam/papa/CameraView.kt
-//ver 1.02-12
+//ver 1.03-15
 
 package com.myhomecam.papa
 
 import android.content.Context
 import android.graphics.Color
 import android.view.Gravity
+import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.RadioButton
-import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Button
+import android.widget.Toast
+import androidx.media3.ui.PlayerView
 
 class CameraView(
     context: Context,
     private val repository: CameraRepository
 ) : ScrollView(context) {
 
-    private val root =
-        LinearLayout(context)
+    private val contentLayout = LinearLayout(context)
 
-    private val cameraSelectionLayout =
-        LinearLayout(context)
+    private val cameraSelectionLayout = LinearLayout(context)
 
-    private val videoAreaTop =
-        TextView(context)
+    private val videoAreaTop = PlayerView(context)
 
-    private val videoAreaBottom =
-        TextView(context)
+    private val videoAreaBottom = PlayerView(context)
 
-    private val cameraInfo =
-        TextView(context)
+    private val cameraInfo = TextView(context)
 
-    private val ptzStatus =
-        TextView(context)
+    private val videoStatus = TextView(context)
+
+    private val startStopButton = Button(context)
+
+    private val snapshotButton = Button(context)
+
+    private val recordButton = Button(context)
+
+    private val ptzStatus = TextView(context)
 
     private var selectedCameraId: Int? = null
 
+    private var isVideoPlaying = false
+
+    private var topPlayer: RtspPlayer? = null
+
+    private var bottomPlayer: RtspPlayer? = null
+
     init {
+        setFillViewport(true)
 
-        root.orientation =
-            LinearLayout.VERTICAL
+        setBackgroundColor(Color.BLACK)
 
-        root.setPadding(
-            12,
-            12,
-            12,
-            12
+        contentLayout.orientation = LinearLayout.VERTICAL
+
+        contentLayout.setPadding(
+            dpToPx(12),
+            dpToPx(12),
+            dpToPx(12),
+            dpToPx(20)
         )
 
-        addView(root)
+        addView(
+            contentLayout,
+            LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.WRAP_CONTENT
+            )
+        )
 
         createSelectionArea()
+
         createVideoArea()
+
+        createVideoControlArea()
+
         createPtzArea()
 
         refresh()
+
+        AppLogger.info("CameraView 初期化完了")
     }
 
     private fun createSelectionArea() {
 
-        val title =
-            TextView(context).apply {
-                text = "操作対象カメラ"
-                textSize = 18f
-                setTextColor(Color.BLACK)
-                setPadding(
-                    0,
-                    0,
-                    0,
-                    8
-                )
-            }
+        val title = TextView(context).apply {
 
-        root.addView(title)
+            text = "操作対象カメラ"
+
+            textSize = 18f
+
+            setTextColor(Color.WHITE)
+
+            setPadding(
+                0,
+                0,
+                0,
+                dpToPx(6)
+            )
+        }
+
+        contentLayout.addView(
+            title,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
         cameraSelectionLayout.orientation =
-            LinearLayout.VERTICAL
+            LinearLayout.HORIZONTAL
 
-        root.addView(
+        cameraSelectionLayout.gravity =
+            Gravity.CENTER_VERTICAL
+
+        contentLayout.addView(
             cameraSelectionLayout,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        cameraInfo.apply {
+
+            text = "カメラ：未選択"
+
+            textSize = 14f
+
+            setTextColor(Color.LTGRAY)
+
+            setPadding(
+                0,
+                dpToPx(6),
+                0,
+                dpToPx(4)
+            )
+        }
+
+        contentLayout.addView(
+            cameraInfo,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -90,218 +149,386 @@ class CameraView(
 
     private fun createVideoArea() {
 
-        videoAreaTop.apply {
-            text =
-                "上側映像\n\nRTSP映像待機中"
+        val videoHeight = getVideoHeight()
 
-            textSize = 17f
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setBackgroundColor(
-                Color.rgb(
-                    25,
-                    25,
-                    25
-                )
-            )
+        videoAreaTop.apply {
+
+            setBackgroundColor(Color.BLACK)
+
+            useController = false
+
+            resizeMode =
+                androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+
+            contentDescription = "上側RTSP映像"
         }
 
         videoAreaBottom.apply {
-            text =
-                "下側映像\n\nRTSP映像待機中"
 
-            textSize = 17f
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setBackgroundColor(
-                Color.rgb(
-                    25,
-                    25,
-                    25
-                )
-            )
+            setBackgroundColor(Color.BLACK)
+
+            useController = false
+
+            resizeMode =
+                androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+
+            contentDescription = "下側RTSP映像"
         }
 
-        val height =
-            getVideoHeight()
+        contentLayout.addView(
+            createVideoLabel("上側映像"),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
-        root.addView(
+        contentLayout.addView(
             videoAreaTop,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(height)
+                videoHeight
             )
         )
 
-        root.addView(
+        contentLayout.addView(
+            createVideoLabel("下側映像"),
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        contentLayout.addView(
             videoAreaBottom,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(height)
+                videoHeight
             )
         )
 
-        cameraInfo.apply {
-            text = "カメラ情報：未選択"
+        videoStatus.apply {
+
+            text = "動画：停止中"
+
             textSize = 14f
-            setTextColor(Color.DKGRAY)
+
+            setTextColor(Color.LTGRAY)
+
+            gravity = Gravity.CENTER
+
             setPadding(
                 0,
-                8,
+                dpToPx(6),
                 0,
-                8
+                dpToPx(6)
             )
         }
 
-        root.addView(cameraInfo)
+        contentLayout.addView(
+            videoStatus,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+    }
+
+    private fun createVideoLabel(
+        label: String
+    ): TextView {
+
+        return TextView(context).apply {
+
+            text = label
+
+            textSize = 14f
+
+            setTextColor(Color.LTGRAY)
+
+            setPadding(
+                0,
+                dpToPx(4),
+                0,
+                dpToPx(2)
+            )
+        }
+    }
+
+    private fun createVideoControlArea() {
+
+        startStopButton.apply {
+
+            text = "▶ 動画表示スタート"
+
+            textSize = 16f
+
+            setOnClickListener {
+
+                toggleVideo()
+            }
+        }
+
+        contentLayout.addView(
+            startStopButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        snapshotButton.apply {
+
+            text = "📷 スナップショット"
+
+            textSize = 16f
+
+            setOnClickListener {
+
+                takeSnapshot()
+            }
+        }
+
+        contentLayout.addView(
+            snapshotButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        recordButton.apply {
+
+            text = "● 録画"
+
+            textSize = 16f
+
+            setOnClickListener {
+
+                startRecording()
+            }
+        }
+
+        contentLayout.addView(
+            recordButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
     }
 
     private fun createPtzArea() {
 
-        ptzStatus.apply {
-            text = "PTZ操作対象：未選択"
-            textSize = 16f
-            setTextColor(Color.BLACK)
+        val title = TextView(context).apply {
+
+            text = "PTZ操作"
+
+            textSize = 18f
+
+            setTextColor(Color.WHITE)
+
             gravity = Gravity.CENTER
+
             setPadding(
                 0,
-                8,
+                dpToPx(10),
                 0,
-                8
+                dpToPx(6)
             )
         }
 
-        root.addView(ptzStatus)
+        contentLayout.addView(
+            title,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
-        val ptzLayout =
-            LinearLayout(context).apply {
-                orientation =
-                    LinearLayout.VERTICAL
+        val rowUp = LinearLayout(context).apply {
 
-                gravity =
-                    Gravity.CENTER
-            }
+            orientation = LinearLayout.HORIZONTAL
 
-        val upButton =
+            gravity = Gravity.CENTER
+        }
+
+        rowUp.addView(
             createPtzButton("▲") {
-                onPtzCommand("UP")
+                sendPtzCommand("上")
             }
+        )
 
-        val middle =
-            LinearLayout(context).apply {
-                orientation =
-                    LinearLayout.HORIZONTAL
+        contentLayout.addView(
+            rowUp,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
-                gravity =
-                    Gravity.CENTER
-            }
+        val rowMiddle = LinearLayout(context).apply {
 
-        val leftButton =
+            orientation = LinearLayout.HORIZONTAL
+
+            gravity = Gravity.CENTER
+        }
+
+        rowMiddle.addView(
             createPtzButton("◀") {
-                onPtzCommand("LEFT")
+                sendPtzCommand("左")
             }
+        )
 
-        val stopButton =
+        rowMiddle.addView(
             createPtzButton("■") {
-                onPtzCommand("STOP")
+                sendPtzCommand("停止")
             }
+        )
 
-        val rightButton =
+        rowMiddle.addView(
             createPtzButton("▶") {
-                onPtzCommand("RIGHT")
+                sendPtzCommand("右")
             }
+        )
 
-        val downButton =
+        contentLayout.addView(
+            rowMiddle,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
+        val rowDown = LinearLayout(context).apply {
+
+            orientation = LinearLayout.HORIZONTAL
+
+            gravity = Gravity.CENTER
+        }
+
+        rowDown.addView(
             createPtzButton("▼") {
-                onPtzCommand("DOWN")
+                sendPtzCommand("下")
             }
+        )
 
-        middle.addView(leftButton)
-        middle.addView(stopButton)
-        middle.addView(rightButton)
+        contentLayout.addView(
+            rowDown,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
 
-        ptzLayout.addView(upButton)
-        ptzLayout.addView(middle)
-        ptzLayout.addView(downButton)
+        ptzStatus.apply {
 
-        root.addView(ptzLayout)
+            text = "PTZ操作対象：未選択"
+
+            textSize = 14f
+
+            setTextColor(Color.LTGRAY)
+
+            gravity = Gravity.CENTER
+
+            setPadding(
+                0,
+                dpToPx(6),
+                0,
+                dpToPx(10)
+            )
+        }
+
+        contentLayout.addView(
+            ptzStatus,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
     }
 
     private fun createPtzButton(
-        text: String,
+        textValue: String,
         action: () -> Unit
     ): Button {
 
         return Button(context).apply {
-            this.text = text
+
+            text = textValue
+
             textSize = 18f
 
-            minWidth = dp(64)
-            minHeight = dp(52)
-
             setOnClickListener {
+
                 action()
             }
+
+            layoutParams =
+                LinearLayout.LayoutParams(
+                    dpToPx(68),
+                    dpToPx(50)
+                ).apply {
+
+                    setMargins(
+                        dpToPx(3),
+                        dpToPx(2),
+                        dpToPx(3),
+                        dpToPx(2)
+                    )
+                }
         }
-    }
-
-    private fun onPtzCommand(
-        command: String
-    ) {
-
-        val cameraId =
-            selectedCameraId
-
-        if (cameraId == null) {
-
-            ptzStatus.text =
-                "PTZ操作対象：未選択"
-
-            return
-        }
-
-        val camera =
-            repository.getCamera(cameraId)
-
-        ptzStatus.text =
-            "PTZ：$command / ${camera.name}"
-
-        AppLogger.info(
-            "PTZ",
-            "UI操作 command=$command cameraId=$cameraId"
-        )
     }
 
     fun refresh() {
 
-        cameraSelectionLayout
-            .removeAllViews()
+        AppLogger.info("CameraView refresh 開始")
+
+        cameraSelectionLayout.removeAllViews()
 
         val cameras =
             repository.getConfiguredCameras()
 
         if (cameras.isEmpty()) {
 
+            selectedCameraId = null
+
+            cameraInfo.text =
+                "カメラ：未登録"
+
+            ptzStatus.text =
+                "PTZ操作対象：未選択"
+
             val emptyText =
                 TextView(context).apply {
+
                     text =
-                        "登録されたカメラはありません。\n設定タブから登録してください。"
+                        "登録されたカメラはありません。\n" +
+                        "設定タブから登録してください。"
+
                     textSize = 16f
-                    setTextColor(Color.DKGRAY)
+
+                    setTextColor(Color.LTGRAY)
+
                     setPadding(
                         0,
-                        8,
+                        dpToPx(8),
                         0,
-                        16
+                        dpToPx(12)
                     )
                 }
 
-            cameraSelectionLayout
-                .addView(emptyText)
+            cameraSelectionLayout.addView(
+                emptyText,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            )
 
-            selectedCameraId = null
-
-            updateCameraInfo()
+            AppLogger.info(
+                "登録カメラなし"
+            )
 
             return
         }
@@ -312,138 +539,444 @@ class CameraView(
                 it.id == selectedCameraId
             }
         ) {
+
             selectedCameraId =
                 cameras.first().id
         }
 
-        val radioGroup =
-            RadioGroup(context).apply {
-                orientation =
-                    RadioGroup.VERTICAL
-            }
-
         cameras.forEach { camera ->
 
-            val radioButton =
-                RadioButton(context).apply {
+            val button =
+                Button(context).apply {
 
-                    text =
-                        "${camera.name}  (${camera.ipAddress})"
+                    text = camera.id.toString()
 
                     textSize = 16f
-                    setTextColor(Color.BLACK)
+
                     tag = camera.id
 
-                    isChecked =
-                        selectedCameraId ==
-                            camera.id
+                    contentDescription =
+                        "カメラ${camera.id}"
 
                     setOnClickListener {
 
                         selectedCameraId =
                             camera.id
 
-                        updateSelection()
-                        updateCameraInfo()
-
-                        AppLogger.info(
-                            "CAMERA",
-                            "選択 cameraId=${camera.id}"
+                        updateCameraSelection(
+                            camera
                         )
                     }
                 }
 
-            radioGroup.addView(
-                radioButton
+            cameraSelectionLayout.addView(
+                button,
+                LinearLayout.LayoutParams(
+                    dpToPx(52),
+                    dpToPx(48)
+                ).apply {
+
+                    setMargins(
+                        dpToPx(2),
+                        0,
+                        dpToPx(2),
+                        0
+                    )
+                }
             )
         }
 
-        cameraSelectionLayout
-            .addView(radioGroup)
+        val selectedCamera =
+            cameras.firstOrNull {
+                it.id == selectedCameraId
+            } ?: cameras.first()
 
-        updateCameraInfo()
+        selectedCameraId =
+            selectedCamera.id
+
+        updateCameraSelection(
+            selectedCamera
+        )
+
+        AppLogger.info(
+            "CameraView refresh 完了: cameras=${cameras.size}"
+        )
     }
 
-    private fun updateSelection() {
+    private fun updateCameraSelection(
+        camera: CameraConfig
+    ) {
 
-        val parent =
-            cameraSelectionLayout
-                .getChildAt(0)
+        cameraInfo.text =
+            "カメラ ${camera.id}：${camera.name}\n" +
+            "IP：${camera.ipAddress}\n" +
+            "RTSP：${camera.rtspPath}"
 
-        if (parent is RadioGroup) {
+        ptzStatus.text =
+            "PTZ操作対象：${camera.name}"
 
-            for (
-                index in 0 until parent.childCount
-            ) {
+        for (
+            index in 0 until
+            cameraSelectionLayout.childCount
+        ) {
 
-                val child =
-                    parent.getChildAt(index)
+            val child =
+                cameraSelectionLayout.getChildAt(
+                    index
+                )
 
-                if (child is RadioButton) {
+            if (child is Button) {
 
-                    child.isChecked =
-                        child.tag ==
-                            selectedCameraId
-                }
+                val id =
+                    child.tag as? Int
+
+                child.isSelected =
+                    id == selectedCameraId
             }
         }
+
+        AppLogger.info(
+            "操作対象カメラ変更: id=${camera.id}, name=${camera.name}"
+        )
     }
 
-    private fun updateCameraInfo() {
+    private fun toggleVideo() {
 
-        val id =
+        val cameraId =
             selectedCameraId
 
-        if (id == null) {
+        if (cameraId == null) {
 
-            cameraInfo.text =
-                "カメラ情報：未選択"
+            Toast.makeText(
+                context,
+                "カメラを選択してください。",
+                Toast.LENGTH_SHORT
+            ).show()
 
-            ptzStatus.text =
-                "PTZ操作対象：未選択"
+            AppLogger.info(
+                "動画開始要求: カメラ未選択"
+            )
+
+            return
+        }
+
+        if (isVideoPlaying) {
+
+            stopVideo()
 
             return
         }
 
         val camera =
-            repository.getCamera(id)
+            repository.getCamera(
+                cameraId
+            )
 
-        cameraInfo.text =
-            buildString {
-                append("カメラ：")
-                append(camera.name)
-                append("\nIP：")
-                append(camera.ipAddress)
-                append("\nRTSP：")
-                append(camera.rtspPath)
-            }
+        if (!camera.isConfigured()) {
+
+            Toast.makeText(
+                context,
+                "カメラ設定が不完全です。",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            AppLogger.info(
+                "動画開始失敗: camera=$cameraId 設定不完全"
+            )
+
+            return
+        }
+
+        startVideo(camera)
+    }
+
+    private fun startVideo(
+        camera: CameraConfig
+    ) {
+
+        AppLogger.info(
+            "動画表示開始要求: camera=${camera.id}, ip=${camera.ipAddress}, path=${camera.rtspPath}"
+        )
+
+        stopPlayers()
+
+        try {
+
+            topPlayer =
+                RtspPlayer(
+                    context = context,
+                    playerView = videoAreaTop
+                ) { state ->
+
+                    AppLogger.info(
+                        "上側RTSP状態: $state"
+                    )
+                }
+
+            bottomPlayer =
+                RtspPlayer(
+                    context = context,
+                    playerView = videoAreaBottom
+                ) { state ->
+
+                    AppLogger.info(
+                        "下側RTSP状態: $state"
+                    )
+                }
+
+            topPlayer?.play(
+                camera.rtspUrl()
+            )
+
+            bottomPlayer?.play(
+                camera.rtspUrl()
+            )
+
+            isVideoPlaying = true
+
+            startStopButton.text =
+                "■ 動画表示ストップ"
+
+            videoStatus.text =
+                "動画：再生開始要求済み"
+
+            AppLogger.info(
+                "動画表示開始完了: camera=${camera.id}"
+            )
+
+        } catch (e: Exception) {
+
+            isVideoPlaying = false
+
+            startStopButton.text =
+                "▶ 動画表示スタート"
+
+            videoStatus.text =
+                "動画：開始失敗"
+
+            AppLogger.error(
+                "動画表示開始失敗: ${e.message}"
+            )
+
+            Toast.makeText(
+                context,
+                "動画表示開始に失敗しました。",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun stopVideo() {
+
+        AppLogger.info(
+            "動画表示停止要求"
+        )
+
+        stopPlayers()
+
+        isVideoPlaying = false
+
+        startStopButton.text =
+            "▶ 動画表示スタート"
+
+        videoStatus.text =
+            "動画：停止中"
+
+        AppLogger.info(
+            "動画表示停止完了"
+        )
+
+        Toast.makeText(
+            context,
+            "動画表示を停止しました。",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun stopPlayers() {
+
+        try {
+
+            topPlayer?.stop()
+
+        } catch (e: Exception) {
+
+            AppLogger.error(
+                "上側プレイヤー停止エラー: ${e.message}"
+            )
+        }
+
+        try {
+
+            bottomPlayer?.stop()
+
+        } catch (e: Exception) {
+
+            AppLogger.error(
+                "下側プレイヤー停止エラー: ${e.message}"
+            )
+        }
+
+        topPlayer = null
+
+        bottomPlayer = null
+    }
+
+    private fun takeSnapshot() {
+
+        if (!isVideoPlaying) {
+
+            Toast.makeText(
+                context,
+                "先に動画表示を開始してください。",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            AppLogger.info(
+                "スナップショット失敗: 動画停止中"
+            )
+
+            return
+        }
+
+        try {
+
+            SnapshotManager.capture(
+                context,
+                videoAreaTop
+            )
+
+            AppLogger.info(
+                "上側映像スナップショット実行"
+            )
+
+            Toast.makeText(
+                context,
+                "スナップショットを保存しました。",
+                Toast.LENGTH_SHORT
+            ).show()
+
+        } catch (e: Exception) {
+
+            AppLogger.error(
+                "スナップショット失敗: ${e.message}"
+            )
+
+            Toast.makeText(
+                context,
+                "スナップショットに失敗しました。",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun startRecording() {
+
+        AppLogger.info(
+            "録画ボタン押下"
+        )
+
+        Toast.makeText(
+            context,
+            "録画機能は次段階で実装します。",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun sendPtzCommand(
+        direction: String
+    ) {
+
+        val cameraId =
+            selectedCameraId
+
+        if (cameraId == null) {
+
+            Toast.makeText(
+                context,
+                "カメラを選択してください。",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            AppLogger.info(
+                "PTZ操作失敗: カメラ未選択 direction=$direction"
+            )
+
+            return
+        }
+
+        val camera =
+            repository.getCamera(
+                cameraId
+            )
 
         ptzStatus.text =
-            "PTZ操作対象：${camera.name}"
+            "PTZ操作：${camera.name} / $direction"
+
+        AppLogger.info(
+            "PTZ操作要求: camera=$cameraId direction=$direction"
+        )
+
+        Toast.makeText(
+            context,
+            "PTZ：$direction",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun getVideoHeight(): Int {
 
-        return context
-            .getSharedPreferences(
+        val preferences =
+            context.getSharedPreferences(
                 "myhomecam_display",
                 Context.MODE_PRIVATE
             )
-            .getInt(
+
+        val heightDp =
+            preferences.getInt(
                 "video_height_dp",
-                180
-            )
-            .coerceIn(
+                150
+            ).coerceIn(
                 100,
-                320
+                260
             )
+
+        return dpToPx(
+            heightDp
+        )
     }
 
-    private fun dp(value: Int): Int {
+    fun release() {
+
+        AppLogger.info(
+            "CameraView release"
+        )
+
+        stopPlayers()
+
+        isVideoPlaying = false
+
+        startStopButton.text =
+            "▶ 動画表示スタート"
+
+        videoStatus.text =
+            "動画：停止中"
+    }
+
+    private fun dpToPx(
+        dp: Int
+    ): Int {
 
         return (
-            value *
+            dp *
                 resources.displayMetrics.density
             ).toInt()
+    }
+
+    override fun onDetachedFromWindow() {
+
+        release()
+
+        super.onDetachedFromWindow()
     }
 }

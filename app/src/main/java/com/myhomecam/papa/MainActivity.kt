@@ -1,5 +1,5 @@
 //app/src/main/java/com/myhomecam/papa/MainActivity.kt
-//ver 1.02-12
+//ver 1.03-13
 
 package com.myhomecam.papa
 
@@ -8,6 +8,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
@@ -15,19 +17,24 @@ import com.google.android.material.tabs.TabLayoutMediator
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var repository: CameraRepository
-    private lateinit var cameraView: CameraView
-    private lateinit var settingsView: SettingsView
-    private lateinit var logView: LogView
+    private lateinit var repository:
+        CameraRepository
 
-    private lateinit var cameraPage: View
-    private lateinit var settingsPage: View
-    private lateinit var logPage: View
+    private lateinit var cameraView:
+        CameraView
+
+    private lateinit var settingsView:
+        SettingsView
+
+    private lateinit var logView:
+        LogView
 
     override fun onCreate(
         savedInstanceState: Bundle?
     ) {
-        super.onCreate(savedInstanceState)
+        super.onCreate(
+            savedInstanceState
+        )
 
         AppLogger.initialize(this)
 
@@ -44,6 +51,34 @@ class MainActivity : AppCompatActivity() {
                 orientation =
                     LinearLayout.VERTICAL
             }
+
+        ViewCompat.setOnApplyWindowInsetsListener(
+            root
+        ) { view, insets ->
+
+            val statusBar =
+                insets.getInsets(
+                    WindowInsetsCompat.Type.statusBars()
+                )
+
+            val oldLeft =
+                view.paddingLeft
+
+            val oldRight =
+                view.paddingRight
+
+            val oldBottom =
+                view.paddingBottom
+
+            view.setPadding(
+                oldLeft,
+                statusBar.top,
+                oldRight,
+                oldBottom
+            )
+
+            insets
+        }
 
         val tabLayout =
             TabLayout(this)
@@ -71,30 +106,25 @@ class MainActivity : AppCompatActivity() {
                 repository
             )
 
-        cameraPage =
-            cameraView
-
-        settingsPage =
-            settingsView.createView()
-
-        logPage =
-            logView.createView()
-
-        val pages: List<View> =
+        val pages:
+            List<View> =
             listOf(
-                cameraPage,
-                settingsPage,
-                logPage
+                cameraView,
+                settingsView.createView(),
+                logView.createView()
             )
 
         viewPager.adapter =
             object :
-                RecyclerView.Adapter<PageViewHolder>() {
+                RecyclerView.Adapter<
+                    PageViewHolder
+                >() {
 
-                override fun onCreateViewHolder(
-                    parent: ViewGroup,
-                    viewType: Int
-                ): PageViewHolder {
+                override fun
+                    onCreateViewHolder(
+                        parent: ViewGroup,
+                        viewType: Int
+                    ): PageViewHolder {
 
                     val page =
                         pages[viewType]
@@ -110,19 +140,24 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                override fun onBindViewHolder(
-                    holder: PageViewHolder,
-                    position: Int
-                ) {
+                override fun
+                    onBindViewHolder(
+                        holder: PageViewHolder,
+                        position: Int
+                    ) {
                 }
 
-                override fun getItemCount(): Int {
+                override fun getItemCount():
+                    Int {
+
                     return pages.size
                 }
 
-                override fun getItemViewType(
-                    position: Int
-                ): Int {
+                override fun
+                    getItemViewType(
+                        position: Int
+                    ): Int {
+
                     return position
                 }
             }
@@ -153,10 +188,18 @@ class MainActivity : AppCompatActivity() {
 
             tab.text =
                 when (position) {
-                    0 -> "カメラ"
-                    1 -> "設定"
-                    2 -> "ログ"
-                    else -> ""
+
+                    0 ->
+                        "カメラ"
+
+                    1 ->
+                        "設定"
+
+                    2 ->
+                        "ログ"
+
+                    else ->
+                        ""
                 }
         }.attach()
 
@@ -164,24 +207,25 @@ class MainActivity : AppCompatActivity() {
             object :
                 ViewPager2.OnPageChangeCallback() {
 
-                override fun onPageSelected(
-                    position: Int
-                ) {
-                    super.onPageSelected(position)
+                override fun
+                    onPageSelected(
+                        position: Int
+                    ) {
+
+                    super.onPageSelected(
+                        position
+                    )
 
                     when (position) {
 
-                        0 -> {
+                        0 ->
                             cameraView.refresh()
-                        }
 
-                        1 -> {
+                        1 ->
                             settingsView.refresh()
-                        }
 
-                        2 -> {
+                        2 ->
                             logView.refresh()
-                        }
                     }
                 }
             }
@@ -192,7 +236,7 @@ class MainActivity : AppCompatActivity() {
 
         AppLogger.info(
             "MAIN",
-            "設定変更を検出しました。画面を更新します。"
+            "設定変更を検出"
         )
 
         cameraView.refresh()
@@ -200,24 +244,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onResume() {
+
         super.onResume()
 
-        if (::cameraView.isInitialized) {
+        if (
+            ::cameraView.isInitialized
+        ) {
             cameraView.refresh()
         }
 
-        if (::settingsView.isInitialized) {
+        if (
+            ::settingsView.isInitialized
+        ) {
             settingsView.refresh()
         }
 
-        if (::logView.isInitialized) {
+        if (
+            ::logView.isInitialized
+        ) {
             logView.refresh()
         }
-
-        AppLogger.info(
-            "MAIN",
-            "MainActivity onResume"
-        )
     }
 
     private class PageViewHolder(
