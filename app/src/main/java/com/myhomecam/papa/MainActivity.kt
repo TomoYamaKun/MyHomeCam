@@ -1,10 +1,14 @@
 //app/src/main/java/com/myhomecam/papa/MainActivity.kt
-//ver 1.01-01
+//ver 1.02-12
 
 package com.myhomecam.papa
 
 import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
@@ -14,71 +18,127 @@ class MainActivity : AppCompatActivity() {
     private lateinit var repository: CameraRepository
     private lateinit var cameraView: CameraView
     private lateinit var settingsView: SettingsView
+    private lateinit var logView: LogView
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    private lateinit var cameraPage: View
+    private lateinit var settingsPage: View
+    private lateinit var logPage: View
+
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
         super.onCreate(savedInstanceState)
 
-        repository = CameraRepository(this)
+        AppLogger.initialize(this)
 
-        val root = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-        }
-
-        val tabLayout = TabLayout(this)
-
-        val viewPager = ViewPager2(this)
-
-        cameraView = CameraView(
-            this,
-            repository
+        AppLogger.info(
+            "MAIN",
+            "MainActivity onCreate"
         )
 
-        settingsView = SettingsView(
-            this,
-            repository
-        )
+        repository =
+            CameraRepository(this)
 
-        val pages = listOf(
-            cameraView,
-            settingsView
-        )
-
-        viewPager.adapter = object :
-            androidx.recyclerview.widget.RecyclerView.Adapter<
-                    PageViewHolder>() {
-
-            override fun onCreateViewHolder(
-                parent: android.view.ViewGroup,
-                viewType: Int
-            ): PageViewHolder {
-                return PageViewHolder(
-                    pages[viewType]
-                )
+        val root =
+            LinearLayout(this).apply {
+                orientation =
+                    LinearLayout.VERTICAL
             }
 
-            override fun onBindViewHolder(
-                holder: PageViewHolder,
-                position: Int
+        val tabLayout =
+            TabLayout(this)
+
+        val viewPager =
+            ViewPager2(this)
+
+        cameraView =
+            CameraView(
+                this,
+                repository
+            )
+
+        settingsView =
+            SettingsView(
+                this,
+                repository
             ) {
+                onSettingsChanged()
             }
 
-            override fun getItemCount(): Int {
-                return pages.size
+        logView =
+            LogView(
+                this,
+                repository
+            )
+
+        cameraPage =
+            cameraView
+
+        settingsPage =
+            settingsView.createView()
+
+        logPage =
+            logView.createView()
+
+        val pages: List<View> =
+            listOf(
+                cameraPage,
+                settingsPage,
+                logPage
+            )
+
+        viewPager.adapter =
+            object :
+                RecyclerView.Adapter<PageViewHolder>() {
+
+                override fun onCreateViewHolder(
+                    parent: ViewGroup,
+                    viewType: Int
+                ): PageViewHolder {
+
+                    val page =
+                        pages[viewType]
+
+                    page.layoutParams =
+                        ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+
+                    return PageViewHolder(
+                        page
+                    )
+                }
+
+                override fun onBindViewHolder(
+                    holder: PageViewHolder,
+                    position: Int
+                ) {
+                }
+
+                override fun getItemCount(): Int {
+                    return pages.size
+                }
+
+                override fun getItemViewType(
+                    position: Int
+                ): Int {
+                    return position
+                }
             }
-        }
 
         root.addView(
             tabLayout,
-            android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             )
         )
 
         root.addView(
             viewPager,
-            android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
                 0,
                 1f
             )
@@ -90,12 +150,53 @@ class MainActivity : AppCompatActivity() {
             tabLayout,
             viewPager
         ) { tab, position ->
-            tab.text = when (position) {
-                0 -> "カメラ"
-                1 -> "設定"
-                else -> ""
-            }
+
+            tab.text =
+                when (position) {
+                    0 -> "カメラ"
+                    1 -> "設定"
+                    2 -> "ログ"
+                    else -> ""
+                }
         }.attach()
+
+        viewPager.registerOnPageChangeCallback(
+            object :
+                ViewPager2.OnPageChangeCallback() {
+
+                override fun onPageSelected(
+                    position: Int
+                ) {
+                    super.onPageSelected(position)
+
+                    when (position) {
+
+                        0 -> {
+                            cameraView.refresh()
+                        }
+
+                        1 -> {
+                            settingsView.refresh()
+                        }
+
+                        2 -> {
+                            logView.refresh()
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    private fun onSettingsChanged() {
+
+        AppLogger.info(
+            "MAIN",
+            "設定変更を検出しました。画面を更新します。"
+        )
+
+        cameraView.refresh()
+        logView.refresh()
     }
 
     override fun onResume() {
@@ -108,9 +209,18 @@ class MainActivity : AppCompatActivity() {
         if (::settingsView.isInitialized) {
             settingsView.refresh()
         }
+
+        if (::logView.isInitialized) {
+            logView.refresh()
+        }
+
+        AppLogger.info(
+            "MAIN",
+            "MainActivity onResume"
+        )
     }
 
     private class PageViewHolder(
-        view: android.view.View
-    ) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view)
+        view: View
+    ) : RecyclerView.ViewHolder(view)
 }

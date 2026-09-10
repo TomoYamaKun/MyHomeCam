@@ -1,5 +1,5 @@
 //app/src/main/java/com/myhomecam/papa/CameraRepository.kt
-//ver 1.01-01
+//ver 1.01-11
 
 package com.myhomecam.papa
 
@@ -9,7 +9,8 @@ class CameraRepository(context: Context) {
 
     companion object {
         private const val PREF_NAME = "myhomecam_cameras"
-        private const val MAX_CAMERAS = 8
+
+        const val MAX_CAMERAS = 8
     }
 
     private val preferences =
@@ -21,21 +22,39 @@ class CameraRepository(context: Context) {
     fun getConfiguredCameras(): List<CameraConfig> {
         return (1..MAX_CAMERAS)
             .mapNotNull { id ->
-                loadCamera(id)?.takeIf { it.isConfigured() }
+                loadCamera(id)?.takeIf {
+                    it.isConfigured()
+                }
             }
     }
 
     fun getCamera(id: Int): CameraConfig {
-        return loadCamera(id) ?: CameraConfig(id)
+        return loadCamera(id)
+            ?: CameraConfig(id)
     }
 
     fun saveCamera(camera: CameraConfig) {
         preferences.edit()
-            .putString(key(camera.id, "name"), camera.name)
-            .putString(key(camera.id, "ip"), camera.ipAddress)
-            .putString(key(camera.id, "user"), camera.userName)
-            .putString(key(camera.id, "password"), camera.password)
-            .putString(key(camera.id, "rtspPath"), camera.rtspPath)
+            .putString(
+                key(camera.id, "name"),
+                camera.name
+            )
+            .putString(
+                key(camera.id, "ip"),
+                camera.ipAddress
+            )
+            .putString(
+                key(camera.id, "user"),
+                camera.userName
+            )
+            .putString(
+                key(camera.id, "password"),
+                camera.password
+            )
+            .putString(
+                key(camera.id, "rtspPath"),
+                camera.rtspPath
+            )
             .apply()
     }
 
@@ -50,24 +69,47 @@ class CameraRepository(context: Context) {
     }
 
     fun clearAll() {
-        preferences.edit().clear().apply()
+        preferences.edit()
+            .clear()
+            .apply()
     }
 
     fun findFirstEmptySlot(): Int? {
-        return (1..MAX_CAMERAS).firstOrNull {
-            !loadCamera(it).orEmpty().isConfigured()
+        return (1..MAX_CAMERAS).firstOrNull { id ->
+            !getCamera(id).isConfigured()
         }
     }
 
     private fun loadCamera(id: Int): CameraConfig? {
-        val name = preferences.getString(key(id, "name"), null)
-        val ip = preferences.getString(key(id, "ip"), null)
-        val user = preferences.getString(key(id, "user"), null)
-        val password = preferences.getString(key(id, "password"), null)
-        val rtspPath = preferences.getString(
-            key(id, "rtspPath"),
-            "onvif1"
-        )
+        val name =
+            preferences.getString(
+                key(id, "name"),
+                null
+            )
+
+        val ip =
+            preferences.getString(
+                key(id, "ip"),
+                null
+            )
+
+        val user =
+            preferences.getString(
+                key(id, "user"),
+                null
+            )
+
+        val password =
+            preferences.getString(
+                key(id, "password"),
+                null
+            )
+
+        val rtspPath =
+            preferences.getString(
+                key(id, "rtspPath"),
+                "onvif1"
+            )
 
         if (
             name == null &&
@@ -88,11 +130,10 @@ class CameraRepository(context: Context) {
         )
     }
 
-    private fun key(id: Int, field: String): String {
+    private fun key(
+        id: Int,
+        field: String
+    ): String {
         return "camera_${id}_$field"
-    }
-
-    private fun CameraConfig?.orEmpty(): CameraConfig {
-        return this ?: CameraConfig(0)
     }
 }
