@@ -1,5 +1,5 @@
 //app/src/main/java/com/myhomecam/papa/LogView.kt
-//ver 1.02-12
+//ver 1.03-23
 
 package com.myhomecam.papa
 
@@ -243,44 +243,104 @@ class LogView(
                 180
             )
 
-        return buildString {
+        val baseDiagnostic =
+            buildString {
 
-            append("===== MyHomeCam Diagnostic =====\n")
-            append("package=com.myhomecam.papa\n")
-            append("Android=${Build.VERSION.RELEASE}\n")
-            append("SDK=${Build.VERSION.SDK_INT}\n")
-            append("device=${Build.MANUFACTURER} ${Build.MODEL}\n")
-            append("cameraCount=${cameras.size}\n")
-            append("videoHeightDp=$displayHeight\n")
-            append("logFile=")
-            append(
-                AppLogger.getLogFilePath()
-            )
-            append("\n")
+                append(
+                    "===== MyHomeCam Diagnostic =====\n"
+                )
 
-            append("\n[Registered Cameras]\n")
+                append(
+                    "package=${context.packageName}\n"
+                )
 
-            if (cameras.isEmpty()) {
-                append("  none\n")
-            } else {
-                append(selectedNames)
+                append(
+                    "Android=${Build.VERSION.RELEASE}\n"
+                )
+
+                append(
+                    "SDK=${Build.VERSION.SDK_INT}\n"
+                )
+
+                append(
+                    "device=${Build.MANUFACTURER} ${Build.MODEL}\n"
+                )
+
+                append(
+                    "cameraCount=${cameras.size}\n"
+                )
+
+                append(
+                    "videoHeightDp=$displayHeight\n"
+                )
+
+                append(
+                    "logFile="
+                )
+
+                append(
+                    AppLogger.getLogFilePath()
+                )
+
                 append("\n")
+
+                append(
+                    "\n[Registered Cameras]\n"
+                )
+
+                if (cameras.isEmpty()) {
+
+                    append(
+                        "  none\n"
+                    )
+
+                } else {
+
+                    append(
+                        selectedNames
+                    )
+
+                    append("\n")
+                }
+
+                append(
+                    "\n[Security]\n"
+                )
+
+                append(
+                    "password=NOT_INCLUDED\n"
+                )
+
+                append(
+                    "\n[Current Stage]\n"
+                )
+
+                append(
+                    "RTSP player=not implemented\n"
+                )
+
+                append(
+                    "ONVIF PTZ=UI only\n"
+                )
+
+                append(
+                    "remote access=not implemented\n"
+                )
             }
 
-            append("\n[Security]\n")
+        val appLoggerDiagnostic =
+            AppLogger.getDiagnosticInfo()
+
+        return buildString {
+
             append(
-                "password=NOT_INCLUDED\n"
+                baseDiagnostic
             )
 
-            append("\n[Current Stage]\n")
+            append("\n")
+
             append(
-                "RTSP player=not implemented\n"
-            )
-            append(
-                "ONVIF PTZ=UI only\n"
-            )
-            append(
-                "remote access=not implemented\n"
+                appLoggerDiagnostic
             )
         }
     }

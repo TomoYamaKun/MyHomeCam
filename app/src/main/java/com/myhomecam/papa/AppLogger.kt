@@ -1,9 +1,12 @@
 //app/src/main/java/com/myhomecam/papa/AppLogger.kt
-//ver 1.03-20
+//ver 1.03-21
 
 package com.myhomecam.papa
 
 import android.content.Context
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.os.Build
 import android.util.Log
 import java.io.File
 import java.text.SimpleDateFormat
@@ -18,6 +21,18 @@ object AppLogger {
 
     private const val CRASH_LOG_FILE_NAME =
         "myhomecam_crash.log"
+
+    private const val HEVC_MIME =
+        "video/hevc"
+
+    private const val TEST_WIDTH =
+        2304
+
+    private const val TEST_HEIGHT =
+        2592
+
+    private const val TEST_FRAME_RATE =
+        30.0
 
     private var appContext: Context? = null
 
@@ -340,9 +355,6 @@ object AppLogger {
     /**
      * LogView互換：
      * 通常ログ全文を取得
-     *
-     * synchronizedブロック内で
-     * returnしない構造にしている。
      */
     fun getLogText(): String {
 
@@ -391,9 +403,6 @@ object AppLogger {
     /**
      * LogView互換：
      * クラッシュログ全文を取得
-     *
-     * synchronizedブロック内で
-     * returnしない構造にしている。
      */
     fun getCrashLogText(): String {
 
@@ -527,6 +536,8 @@ object AppLogger {
 
     /**
      * 診断情報
+     *
+     * 端末のHEVCデコーダー能力も調査する。
      */
     fun getDiagnosticInfo(): String {
 
@@ -577,6 +588,20 @@ object AppLogger {
         )
 
         builder.appendLine(
+            "Android: ${Build.VERSION.RELEASE}"
+        )
+
+        builder.appendLine(
+            "SDK: ${Build.VERSION.SDK_INT}"
+        )
+
+        builder.appendLine(
+            "Device: ${Build.MANUFACTURER} ${Build.MODEL}"
+        )
+
+        builder.appendLine()
+
+        builder.appendLine(
             "Logger: 初期化済み"
         )
 
@@ -600,7 +625,271 @@ object AppLogger {
             "Crash log size: ${crashFile.length()} bytes"
         )
 
+        builder.appendLine()
+
+        appendHevcDiagnostic(
+            builder = builder
+        )
+
         return builder.toString()
+    }
+
+    /**
+     * HEVCデコーダー診断
+     *
+     * 現在問題になっている
+     * 2304 x 2592 / HEVC
+     * を端末のMediaCodecが受け付けられるか確認する。
+     */
+    private fun appendHevcDiagnostic(
+        builder: StringBuilder
+    ) {
+
+        builder.appendLine(
+            "===== HEVC Decoder Diagnostic ====="
+        )
+
+        builder.appendLine(
+            "MIME: $HEVC_MIME"
+        )
+
+        builder.appendLine(
+            "Test resolution: ${TEST_WIDTH}x${TEST_HEIGHT}"
+        )
+
+        builder.appendLine(
+            "Test frame rate: ${TEST_FRAME_RATE} fps"
+        )
+
+        try {
+
+            val codecList =
+                MediaCodecList(
+                    MediaCodecList.ALL_CODECS
+                )
+
+            val codecInfos =
+                codecList.codecInfos
+
+            var foundDecoder =
+                false
+
+            codecInfos.forEach { codecInfo ->
+
+                if (codecInfo.isEncoder) {
+                    return@forEach
+                }
+
+                val supportedTypes =
+                    codecInfo.supportedTypes
+
+                val supportsHevc =
+                    supportedTypes.any {
+                        it.equals(
+                            HEVC_MIME,
+                            ignoreCase = true
+                        )
+                    }
+
+                if (!supportsHevc) {
+                    return@forEach
+                }
+
+                foundDecoder = true
+
+                builder.appendLine()
+
+                builder.appendLine(
+                    "Decoder: ${codecInfo.name}"
+                )
+
+                if (Build.VERSION.SDK_INT >= 29) {
+
+                    builder.appendLine(
+                        "hardwareAccelerated: " +
+                            codecInfo.isHardwareAccelerated
+                    )
+
+                    builder.appendLine(
+                        "softwareOnly: " +
+                            codecInfo.isSoftwareOnly
+                    )
+
+                    builder.appendLine(
+                        "vendor: " +
+                            codecInfo.isVendor
+                    )
+                }
+
+                try {
+
+                    val capabilities =
+                        codecInfo.getCapabilitiesForType(
+                            HEVC_MIME
+                        )
+
+                    appendCodecCapabilities(
+                        builder = builder,
+                        capabilities = capabilities
+                    )
+
+                } catch (e: Exception) {
+
+                    builder.appendLine(
+                        "Capabilities取得失敗: " +
+                            "${e.javaClass.simpleName}: " +
+                            "${e.message}"
+                    )
+                }
+            }
+
+            if (!foundDecoder) {
+
+                builder.appendLine()
+
+                builder.appendLine(
+                    "HEVCデコーダー: 見つかりません"
+                )
+
+                builder.appendLine(
+                    "video/hevc をサポートする" +
+                        " MediaCodec がありません。"
+                )
+            }
+
+        } catch (e: Exception) {
+
+            builder.appendLine()
+
+            builder.appendLine(
+                "HEVC診断失敗: " +
+                    "${e.javaClass.simpleName}: " +
+                    "${e.message}"
+            )
+        }
+
+        builder.appendLine(
+            "===== HEVC Decoder Diagnostic End ====="
+        )
+    }
+
+    /**
+     * MediaCodecの能力情報を診断文字列へ追加
+     */
+    private fun appendCodecCapabilities(
+        builder: StringBuilder,
+        capabilities: MediaCodecInfo.CodecCapabilities
+    ) {
+
+        val videoCapabilities =
+            capabilities.videoCapabilities
+
+        if (videoCapabilities == null) {
+
+            builder.appendLine(
+                "VideoCapabilities: なし"
+            )
+
+        } else {
+
+            val maxWidth =
+                videoCapabilities.supportedWidths.upper
+
+            val maxHeight =
+                videoCapabilities.supportedHeights.upper
+
+            builder.appendLine(
+                "Max width: $maxWidth"
+            )
+
+            builder.appendLine(
+                "Max height: $maxHeight"
+            )
+			
+val sizeSupported =
+    try {
+
+        videoCapabilities
+            .areSizeAndRateSupported(
+                TEST_WIDTH,
+                TEST_HEIGHT,
+                1.0
+            )
+
+    } catch (e: Exception) {
+
+        false
+    }
+
+builder.appendLine(
+    "2304x2592 supported: " +
+        sizeSupported
+)
+
+            val sizeAndRateSupported =
+                try {
+
+                    videoCapabilities
+                        .areSizeAndRateSupported(
+                            TEST_WIDTH,
+                            TEST_HEIGHT,
+                            TEST_FRAME_RATE
+                        )
+
+                } catch (e: Exception) {
+
+                    false
+                }
+
+            builder.appendLine(
+                "2304x2592@30fps supported: " +
+                    sizeAndRateSupported
+            )
+
+            val maxFrameRate =
+                try {
+
+                    videoCapabilities
+                        .getSupportedFrameRatesFor(
+                            TEST_WIDTH,
+                            TEST_HEIGHT
+                        )
+
+                } catch (e: Exception) {
+
+                    null
+                }
+
+            if (maxFrameRate != null) {
+
+                builder.appendLine(
+                    "2304x2592 frame rate range: " +
+                        "${maxFrameRate.lower} - " +
+                        "${maxFrameRate.upper}"
+                )
+            }
+        }
+
+        builder.appendLine(
+            "HEVC Profile/Level:"
+        )
+
+        if (capabilities.profileLevels.isEmpty()) {
+
+            builder.appendLine(
+                "  none"
+            )
+
+        } else {
+
+            capabilities.profileLevels.forEach { profileLevel ->
+
+                builder.appendLine(
+                    "  profile=${profileLevel.profile}" +
+                        " level=${profileLevel.level}"
+                )
+            }
+        }
     }
 
     /**
@@ -765,7 +1054,7 @@ object AppLogger {
 
             Log.e(
                 TAG,
-                "クラッシュログ削除失敗",
+                "ログ削除に失敗",
                 e
             )
         }
