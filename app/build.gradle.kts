@@ -1,5 +1,5 @@
-// /storage/internal_new/project/MyHomeCam/app/build.gradle.kts
-//ver 1.01-02
+//app/build.gradle.kts
+//ver 1.03-13
 
 plugins {
     id("com.android.application")
@@ -15,22 +15,28 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.1"
+        versionName = "1.0.2"
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile(
+                    "proguard-android-optimize.txt"
+                ),
                 "proguard-rules.pro"
             )
         }
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility =
+            JavaVersion.VERSION_17
+
+        targetCompatibility =
+            JavaVersion.VERSION_17
     }
 
     kotlinOptions {
@@ -39,8 +45,32 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.viewpager2:viewpager2:1.1.0")
+
+    implementation(
+        "androidx.core:core-ktx:1.15.0"
+    )
+
+    implementation(
+        "androidx.appcompat:appcompat:1.7.0"
+    )
+
+    implementation(
+        "com.google.android.material:material:1.12.0"
+    )
+
+    implementation(
+        "androidx.viewpager2:viewpager2:1.1.0"
+    )
+
+    implementation(
+        "androidx.media3:media3-exoplayer:1.5.1"
+    )
+
+    implementation(
+        "androidx.media3:media3-exoplayer-rtsp:1.5.1"
+    )
+
+    implementation(
+        "androidx.media3:media3-ui:1.5.1"
+    )
 }
