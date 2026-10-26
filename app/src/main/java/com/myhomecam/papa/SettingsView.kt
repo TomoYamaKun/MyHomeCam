@@ -1,5 +1,5 @@
 //app/src/main/java/com/myhomecam/papa/SettingsView.kt
-//ver 1.02-12
+//ver 1.04-01
 
 package com.myhomecam.papa
 
@@ -27,9 +27,10 @@ class SettingsView(
     private lateinit var cameraSpinner: Spinner
     private lateinit var nameEdit: EditText
     private lateinit var ipEdit: EditText
+    private lateinit var portEdit: EditText
     private lateinit var userEdit: EditText
     private lateinit var passwordEdit: EditText
-    private lateinit var rtspSpinner: Spinner
+    private lateinit var rtspPathEdit: EditText
     private lateinit var videoSizeText: TextView
 
     private var selectedCameraId: Int? = null
@@ -60,7 +61,7 @@ class SettingsView(
 
         val title =
             TextView(context).apply {
-                text = "カメラ設定"
+                text = "カメラ設定 (Ver.1.04-01)"
                 textSize = 24f
                 setTextColor(Color.BLACK)
             }
@@ -99,6 +100,21 @@ class SettingsView(
         root.addView(ipEdit)
 
         root.addView(
+            createLabel("RTSPポート番号")
+        )
+
+        portEdit =
+            createEditText(
+                "例：554"
+            ).apply {
+                inputType =
+                    InputType.TYPE_CLASS_NUMBER
+                setText("554")
+            }
+
+        root.addView(portEdit)
+
+        root.addView(
             createLabel("ユーザー名")
         )
 
@@ -125,23 +141,17 @@ class SettingsView(
         root.addView(passwordEdit)
 
         root.addView(
-            createLabel("RTSPパス")
+            createLabel("RTSPパス (例: stream0, /av_stream/ch0)")
         )
 
-        rtspSpinner =
-            Spinner(context)
+        rtspPathEdit =
+            createEditText(
+                "例：stream0"
+            ).apply {
+                setText("onvif1")
+            }
 
-        rtspSpinner.adapter =
-            ArrayAdapter(
-                context,
-                android.R.layout.simple_spinner_dropdown_item,
-                listOf(
-                    "onvif1",
-                    "stream0"
-                )
-            )
-
-        root.addView(rtspSpinner)
+        root.addView(rtspPathEdit)
 
         val saveButton =
             Button(context).apply {
@@ -424,6 +434,10 @@ class SettingsView(
             camera.ipAddress
         )
 
+        portEdit.setText(
+            camera.port.toString()
+        )
+
         userEdit.setText(
             camera.userName
         )
@@ -432,12 +446,8 @@ class SettingsView(
             camera.password
         )
 
-        rtspSpinner.setSelection(
-            if (camera.rtspPath == "stream0") {
-                1
-            } else {
-                0
-            }
+        rtspPathEdit.setText(
+            camera.rtspPath
         )
     }
 
@@ -502,6 +512,14 @@ class SettingsView(
                 .toString()
                 .trim()
 
+        val portStr =
+            portEdit.text
+                .toString()
+                .trim()
+
+        val port =
+            portStr.toIntOrNull() ?: 554
+
         val userName =
             userEdit.text
                 .toString()
@@ -512,9 +530,10 @@ class SettingsView(
                 .toString()
 
         val rtspPath =
-            rtspSpinner.selectedItem
-                ?.toString()
-                ?: "onvif1"
+            rtspPathEdit.text
+                .toString()
+                .trim()
+                .ifBlank { "onvif1" }
 
         if (name.isBlank()) {
             showError("カメラ名を入力してください。")
@@ -541,6 +560,7 @@ class SettingsView(
                 id = cameraId,
                 name = name,
                 ipAddress = ipAddress,
+                port = port,
                 userName = userName,
                 password = password,
                 rtspPath = rtspPath
@@ -553,7 +573,7 @@ class SettingsView(
 
         AppLogger.info(
             "CAMERA",
-            "保存 cameraId=$cameraId name=$name ip=$ipAddress rtsp=$rtspPath"
+            "保存 cameraId=$cameraId name=$name rtspUrl=${camera.rtspUrlSafe()}"
         )
 
         Toast.makeText(
@@ -644,11 +664,16 @@ class SettingsView(
 
         nameEdit.setText("")
         ipEdit.setText("")
+
+        if (::portEdit.isInitialized) {
+            portEdit.setText("554")
+        }
+
         userEdit.setText("")
         passwordEdit.setText("")
 
-        if (::rtspSpinner.isInitialized) {
-            rtspSpinner.setSelection(0)
+        if (::rtspPathEdit.isInitialized) {
+            rtspPathEdit.setText("onvif1")
         }
     }
 

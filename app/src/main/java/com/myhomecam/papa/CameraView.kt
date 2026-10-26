@@ -1,5 +1,5 @@
 //app/src/main/java/com/myhomecam/papa/CameraView.kt
-//ver 1.03-15
+//ver 1.04-01
 
 package com.myhomecam.papa
 
@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -26,6 +27,15 @@ class CameraView(
     private val videoAreaTop = PlayerView(context)
 
     private val videoAreaBottom = PlayerView(context)
+
+    private val bottomLabel = createVideoLabel("下側映像")
+
+    private val dualLensCheckBox = CheckBox(context).apply {
+        text = "上下分割表示（デュアルレンズ）"
+        isChecked = true
+        setTextColor(Color.WHITE)
+        textSize = 14f
+    }
 
     private val cameraInfo = TextView(context)
 
@@ -79,14 +89,14 @@ class CameraView(
 
         refresh()
 
-        AppLogger.info("CameraView 初期化完了")
+        AppLogger.info("CameraView 初期化完了 (Ver.1.04-01)")
     }
 
     private fun createSelectionArea() {
 
         val title = TextView(context).apply {
 
-            text = "操作対象カメラ"
+            text = "操作対象カメラ (Ver.1.04-01)"
 
             textSize = 18f
 
@@ -175,6 +185,19 @@ class CameraView(
             contentDescription = "下側RTSP映像"
         }
 
+        // 上下分割切り替えチェックボックスを配置
+        dualLensCheckBox.setOnCheckedChangeListener { _, isChecked ->
+            onDualLensToggled(isChecked)
+        }
+
+        contentLayout.addView(
+            dualLensCheckBox,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        )
+
         contentLayout.addView(
             createVideoLabel("上側映像"),
             LinearLayout.LayoutParams(
@@ -192,7 +215,7 @@ class CameraView(
         )
 
         contentLayout.addView(
-            createVideoLabel("下側映像"),
+            bottomLabel,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -232,6 +255,22 @@ class CameraView(
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
         )
+    }
+
+    private fun onDualLensToggled(isEnabled: Boolean) {
+        AppLogger.info("上下分割モード変更: $isEnabled")
+        val visibility = if (isEnabled) View.VISIBLE else View.GONE
+        bottomLabel.visibility = visibility
+        videoAreaBottom.visibility = visibility
+
+        // 再生中の場合はモード変更を即時反映させるため再スタート
+        if (isVideoPlaying) {
+            val cameraId = selectedCameraId ?: return
+            val camera = repository.getCamera(cameraId)
+            if (camera.isConfigured()) {
+                startVideo(camera)
+            }
+        }
     }
 
     private fun createVideoLabel(
@@ -609,7 +648,7 @@ class CameraView(
 
         cameraInfo.text =
             "カメラ ${camera.id}：${camera.name}\n" +
-            "IP：${camera.ipAddress}\n" +
+            "IP：${camera.ipAddress}:${camera.port}\n" +
             "RTSP：${camera.rtspPath}"
 
         ptzStatus.text =
@@ -695,7 +734,7 @@ class CameraView(
     ) {
 
         AppLogger.info(
-            "動画表示開始要求: camera=${camera.id}, ip=${camera.ipAddress}, path=${camera.rtspPath}"
+            "動画表示開始要求 (Ver.1.04-01): camera=${camera.id}, url=${camera.rtspUrlSafe()}, dualLens=${dualLensCheckBox.isChecked}"
         )
 
         stopPlayers()
@@ -713,24 +752,27 @@ class CameraView(
                     )
                 }
 
-            bottomPlayer =
-                RtspPlayer(
-                    context = context,
-                    playerView = videoAreaBottom
-                ) { state ->
-
-                    AppLogger.info(
-                        "下側RTSP状態: $state"
-                    )
-                }
-
             topPlayer?.play(
                 camera.rtspUrl()
             )
 
-            bottomPlayer?.play(
-                camera.rtspUrl()
-            )
+            // 上下分割が有効な場合のみ下側プレイヤーを起動
+            if (dualLensCheckBox.isChecked) {
+                bottomPlayer =
+                    RtspPlayer(
+                        context = context,
+                        playerView = videoAreaBottom
+                    ) { state ->
+
+                        AppLogger.info(
+                            "下側RTSP状態: $state"
+                        )
+                    }
+
+                bottomPlayer?.play(
+                    camera.rtspUrl()
+                )
+            }
 
             isVideoPlaying = true
 

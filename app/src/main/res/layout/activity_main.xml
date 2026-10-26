@@ -1,18 +1,46 @@
-<!-- /storage/internal_new/project/MyHomeCam/app/src/main/res/layout/activity_main.xml -->
-<!--ver 1.01-07-->
-
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="#121212">
 
-    <TextView
+    <!-- ツールバー / ステータス部 -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:padding="16dp"
-        android:text="MyHomeCam"
-        android:textSize="22sp" />
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#1E1E1E">
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="MyHomeCam Papa (Ver.1.04-00)"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:gravity="center_vertical" />
+
+        <!-- ★ 上下分割の有効/無効を切り替えるボタン -->
+        <ToggleButton
+            android:id="@+id/btnToggleDualLens"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:textOn="上下分割: ON"
+            android:textOff="上下分割: OFF"
+            android:checked="true"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF" />
+    </LinearLayout>
+
+    <!-- メインのカメラ映像表示ビュー -->
+    <com.myhomecam.papa.CameraView
+        android:id="@+id/cameraView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
 </LinearLayout>
